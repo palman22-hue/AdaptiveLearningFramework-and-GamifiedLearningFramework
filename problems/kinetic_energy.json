@@ -1,0 +1,23 @@
+{
+  "topic": "Kinetic Energy",
+  "question": "E_k = 1/2 * m * v^2",
+  "correct_answer": "125 J",
+
+  "common_errors": [
+    {
+      "pattern": "operator_confusion",
+      "description": "Student gebruikt '+' in plaats van '*' en vergeet v^2.",
+      "drill_prompt": "Bereken 5 + 3 * 2 en (5 + 3) * 2. Leg uit waarom ze verschillen."
+    },
+    {
+      "pattern": "missing_exponent",
+      "description": "Student vergeet de snelheid te kwadrateren.",
+      "drill_prompt": "Schrijf de formule voor kinetische energie en label elk symbool."
+    }
+  ],
+
+  "integration_test": {
+    "prompt": "Een object van 5 kg versnelt van 20 m/s naar 30 m/s. Wat is de verandering in kinetische energie?"
+  }
+}
+
