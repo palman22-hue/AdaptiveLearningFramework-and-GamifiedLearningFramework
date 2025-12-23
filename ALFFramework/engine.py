@@ -50,6 +50,10 @@ class AdaptiveLearningFramework:
             raise ValueError(f"Topic '{topic}' bestaat niet in problems/ folder.")
 
         print(f"--- Adaptive Learner Initialized for: {topic} ---")
+    
+    @staticmethod
+    def initialize_learner(problem_data):
+        return AdaptiveLearner(problem_data)
 
     # --------------------------------------------------------
     # FASE 1: DIAGNOSE
