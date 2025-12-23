@@ -90,18 +90,18 @@ selected_topic = st.selectbox(
 
 if st.session_state.learner is None or st.session_state.learner.topic != selected_topic:
     # Stop if no topic selected yet
-if not selected_topic:
-    st.info(T["choose_topic"])
-    st.stop()
+   if not selected_topic:
+       st.info(T["choose_topic"])
+       st.stop()
 
-json_path = os.path.join(problem_dir, selected_topic + ".json")
+   json_path = os.path.join(problem_dir, selected_topic + ".json")
 
-if not os.path.exists(json_path):
-    st.error(f"JSON file not found: {json_path}")
-    st.stop()
+   if not os.path.exists(json_path):
+       st.error(f"JSON file not found: {json_path}")
+       st.stop()
 
-with open(json_path, "r") as f:
-    problem_data = json.load(f)
+   with open(json_path, "r") as f:
+       problem_data = json.load(f)
 
 
     # Initialize learner via the engine (CORRECT PLACE)
