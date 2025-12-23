@@ -2,7 +2,7 @@ import json
 import os
 
 # ============================================================
-# 1. PROBLEM BANK (laadt alle JSON-problemen)
+# 1. PROBLEM BANK
 # ============================================================
 
 class ProblemBank:
@@ -32,89 +32,102 @@ class ProblemBank:
         return self.problems.get(topic)
 
 
-# Maak één globale problem bank
 problem_bank = ProblemBank()
 
 
 # ============================================================
-# 2. ADAPTIVE LEARNER (maakt gebruik van JSON-problemen)
+# 2. ADAPTIVE LEARNER (STATE MACHINE)
+# ============================================================
+
+class AdaptiveLearner:
+    def __init__(self, problem_data):
+        self.topic = problem_data["topic"]
+        self.problem = problem_data
+        self.history = []
+        self.phase = 1
+        self.last_report = None
+
+    # -----------------------------
+    # PHASE 1 — DIAGNOSE
+    # -----------------------------
+    def diagnose(self, student_input):
+        for err in self.problem["common_errors"]:
+            if err["pattern"].lower() in student_input.lower():
+                self.last_report = err
+                self.phase = 2
+                return {
+                    "status": "incorrect",
+                    "error_type": err["pattern"],
+                    "details": err["description"],
+                    "drill": err["drill_prompt"]
+                }
+
+        # Geen match
+        self.last_report = {
+            "pattern": "unknown",
+            "description": "Geen specifiek foutpatroon gevonden.",
+            "drill_prompt": "Schrijf de formule opnieuw en leg elke stap uit."
+        }
+
+        self.phase = 2
+        return {
+            "status": "incorrect",
+            "error_type": "unknown",
+            "details": "Geen specifiek foutpatroon gevonden.",
+            "drill": self.last_report["drill_prompt"]
+        }
+
+    # -----------------------------
+    # PHASE 2 — DRILL
+    # -----------------------------
+    def drill(self, student_input):
+        # Voor nu: alles goed
+        self.phase = 3
+        return {"is_correct": True}
+
+    # -----------------------------
+    # PHASE 3 — INTEGRATION TEST
+    # -----------------------------
+    def integration(self):
+        self.phase = 1
+        return self.problem["integration_test"]
+
+
+# ============================================================
+# 3. ADAPTIVE LEARNING FRAMEWORK (ENGINE)
 # ============================================================
 
 class AdaptiveLearningFramework:
-    def __init__(self, topic):
-        self.topic = topic
-        self.problem = problem_bank.get(topic)
-        self.history = []
 
-        if not self.problem:
-            raise ValueError(f"Topic '{topic}' bestaat niet in problems/ folder.")
-
-        print(f"--- Adaptive Learner Initialized for: {topic} ---")
-    
     @staticmethod
     def initialize_learner(problem_data):
         return AdaptiveLearner(problem_data)
 
-    # --------------------------------------------------------
-    # FASE 1: DIAGNOSE
-    # --------------------------------------------------------
-    def phase1_diagnose_isolate(self, student_input: str) -> dict:
-        question = self.problem["question"]
+    @staticmethod
+    def process_answer(learner, student_input):
+        """
+        Stuurt automatisch door de fases:
+        diagnose → drill → integratie
+        """
 
-        # Zoek naar foutpatronen
-        for err in self.problem["common_errors"]:
-            pattern = err["pattern"].lower()
-            if pattern in student_input.lower():
-                report = {
-                    "error_type": err["pattern"],
-                    "details": err["description"],
-                    "drill_prompt": err["drill_prompt"]
+        if learner.phase == 1:
+            return learner.diagnose(student_input)
+
+        elif learner.phase == 2:
+            drill_result = learner.drill(student_input)
+            if drill_result["is_correct"]:
+                return {
+                    "status": "correct",
+                    "integration": learner.integration()
                 }
-                self.history.append({"phase": 1, "report": report})
-                return report
+            else:
+                return {
+                    "status": "incorrect",
+                    "drill": learner.last_report["drill_prompt"]
+                }
 
-        # Geen match → generieke fout
-        report = {
-            "error_type": "unknown",
-            "details": "Geen specifiek foutpatroon gevonden.",
-            "drill_prompt": "Schrijf de formule opnieuw en leg elke stap uit."
-        }
-        self.history.append({"phase": 1, "report": report})
-        return report
-
-    # --------------------------------------------------------
-    # FASE 2: HYPOTHESE & DRILL
-    # --------------------------------------------------------
-    def phase2_hypothesize_adapt(self, report: dict, student_hypothesis: str) -> dict:
-        drill = {
-            "prompt": report["drill_prompt"]
-        }
-
-        self.history.append({
-            "phase": 2,
-            "hypothesis": student_hypothesis,
-            "drill": drill
-        })
-
-        return drill
-
-    # --------------------------------------------------------
-    # FASE 3: VALIDATIE & INTEGRATIE
-    # --------------------------------------------------------
-    def phase3_validate_integrate(self, drill_result: dict):
-        if drill_result.get("is_correct"):
-            final_test = self.problem["integration_test"]
-            self.history.append({
-                "phase": 3,
-                "drill_result": drill_result,
-                "final_test": final_test
-            })
-            return final_test
-
-        # Fout → terug naar fase 2
-        self.history.append({
-            "phase": 3,
-            "drill_result": drill_result,
-            "final_test": None
-        })
-        return None
+        elif learner.phase == 3:
+            return {
+                "status": "correct",
+                "integration": learner.integration()
+            }

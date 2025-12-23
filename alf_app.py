@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import os
-from ALFFramework.engine import AdaptiveLearningFramework   # FIXED IMPORT
+from engine import AdaptiveLearningFramework   # <-- BELANGRIJK
 
 # -----------------------------
 # LANGUAGE SYSTEM
@@ -15,51 +15,43 @@ LANGUAGES = {
 TEXT = {
     "en": {
         "title": "Adaptive Learning Framework",
-        "choose_language": "Language",
         "choose_topic": "Choose a topic:",
         "your_answer": "Your answer:",
         "submit": "Submit",
         "correct": "Correct!",
         "incorrect": "Incorrect.",
         "drill_question": "Drill question:",
-        "integration_test": "Integration test:",
-        "start": "Start"
+        "integration_test": "Integration test:"
     },
     "nl": {
         "title": "Adaptief Leerframework",
-        "choose_language": "Taal",
         "choose_topic": "Kies een onderwerp:",
         "your_answer": "Jouw antwoord:",
         "submit": "Versturen",
         "correct": "Goed!",
         "incorrect": "Fout.",
         "drill_question": "Drill vraag:",
-        "integration_test": "Integratietest:",
-        "start": "Start"
+        "integration_test": "Integratietest:"
     }
 }
 
 # -----------------------------
-# STREAMLIT SESSION INIT
+# SESSION INIT
 # -----------------------------
 
 if "language" not in st.session_state:
     st.session_state.language = "English"
 
-if "selected_topic" not in st.session_state:
-    st.session_state.selected_topic = None
-
 if "learner" not in st.session_state:
     st.session_state.learner = None
 
 # -----------------------------
-# SIDEBAR LANGUAGE SELECTOR
+# LANGUAGE SELECTOR
 # -----------------------------
 
 st.session_state.language = st.sidebar.selectbox(
     "Language / Taal",
-    list(LANGUAGES.keys()),
-    key="language_selector"
+    list(LANGUAGES.keys())
 )
 
 lang = LANGUAGES[st.session_state.language]
@@ -78,39 +70,24 @@ st.title(T["title"])
 # TOPIC SELECTOR
 # -----------------------------
 
-selected_topic = st.selectbox(
-    T["choose_topic"],
-    topics,
-    key="selected_topic"
-)
+selected_topic = st.selectbox(T["choose_topic"], topics)
 
-# -----------------------------
-# INITIALIZE LEARNER WHEN TOPIC CHANGES
-# -----------------------------
-
-if st.session_state.learner is None or st.session_state.learner.topic != selected_topic:
-
-    if not selected_topic:
-        st.info(T["choose_topic"])
-        st.stop()
-
+if selected_topic:
     json_path = os.path.join(problem_dir, selected_topic + ".json")
-
-    if not os.path.exists(json_path):
-        st.error(f"JSON file not found: {json_path}")
-        st.stop()
-
-    with open(json_path, "r") as f:
+    with open(json_path, "r", encoding="utf-8") as f:
         problem_data = json.load(f)
 
-    # Initialize learner via the engine
-    st.session_state.learner = AdaptiveLearningFramework.initialize_learner(problem_data)
+    if (
+        st.session_state.learner is None
+        or st.session_state.learner.topic != problem_data["topic"]
+    ):
+        st.session_state.learner = AdaptiveLearningFramework.initialize_learner(problem_data)
 
 # -----------------------------
 # MAIN UI
 # -----------------------------
 
-user_answer = st.text_input(T["your_answer"], key="answer_input")
+user_answer = st.text_input(T["your_answer"])
 
 if st.button(T["submit"]):
     result = AdaptiveLearningFramework.process_answer(
