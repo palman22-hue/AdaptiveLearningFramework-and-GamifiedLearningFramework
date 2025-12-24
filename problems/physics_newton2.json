@@ -18,5 +18,21 @@
 
   "integration_test": {
     "prompt": "Een object van 10 kg versnelt met 1.5 m/s^2. Bereken de kracht."
+  },
+  "explanation": {
+    "concepts": [
+      {
+        "symbol": "5x - 7 = 18",
+        "meaning": "This is a linear equation. It means: find the value of x that makes the statement true."
+      },
+      {
+        "symbol": "+7",
+        "meaning": "Adding 7 to both sides cancels the -7 on the left side."
+      },
+      {
+        "symbol": "÷5",
+        "meaning": "Dividing both sides by 5 isolates x."
+      }
+    ]
   }
 }

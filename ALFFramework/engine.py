@@ -1,133 +1,72 @@
 import json
 import os
 
-# ============================================================
-# 1. PROBLEM BANK
-# ============================================================
-
+# ---------------------------------------------------------
+# PROBLEM BANK
+# ---------------------------------------------------------
 class ProblemBank:
-    def __init__(self, folder="problems"):
-        self.folder = folder
-        self.problems = self._load_all()
+    def __init__(self, folder_path):
+        self.folder_path = folder_path
+        self.problems = self.load_all_problems()
 
-    def _load_all(self):
+    def load_all_problems(self):
         problems = {}
-        if not os.path.exists(self.folder):
-            print(f"[WARNING] Problem folder '{self.folder}' not found.")
-            return problems
-
-        for file in os.listdir(self.folder):
-            if file.endswith(".json"):
-                path = os.path.join(self.folder, file)
-                try:
-                    with open(path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                        problems[data["topic"]] = data
-                except Exception as e:
-                    print(f"[ERROR] Failed to load {file}: {e}")
-
+        for filename in os.listdir(self.folder_path):
+            if filename.endswith(".json"):
+                path = os.path.join(self.folder_path, filename)
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    topic = data.get("topic", filename.replace(".json", ""))
+                    problems[topic] = data
         return problems
 
-    def get(self, topic):
+    def get_topics(self):
+        return list(self.problems.keys())
+
+    def get_problem(self, topic):
         return self.problems.get(topic)
 
 
-problem_bank = ProblemBank()
-
-
-# ============================================================
-# 2. ADAPTIVE LEARNER (STATE MACHINE)
-# ============================================================
-
+# ---------------------------------------------------------
+# ADAPTIVE LEARNER
+# ---------------------------------------------------------
 class AdaptiveLearner:
-    def __init__(self, problem_data):
-        self.topic = problem_data["topic"]
-        self.problem = problem_data
-        self.history = []
-        self.phase = 1
-        self.last_report = None
-
-    # -----------------------------
-    # PHASE 1 — DIAGNOSE
-    # -----------------------------
-    def diagnose(self, student_input):
-        for err in self.problem["common_errors"]:
-            if err["pattern"].lower() in student_input.lower():
-                self.last_report = err
-                self.phase = 2
-                return {
-                    "status": "incorrect",
-                    "error_type": err["pattern"],
-                    "details": err["description"],
-                    "drill": err["drill_prompt"]
-                }
-
-        # Geen match
-        self.last_report = {
-            "pattern": "unknown",
-            "description": "Geen specifiek foutpatroon gevonden.",
-            "drill_prompt": "Schrijf de formule opnieuw en leg elke stap uit."
-        }
-
-        self.phase = 2
-        return {
-            "status": "incorrect",
-            "error_type": "unknown",
-            "details": "Geen specifiek foutpatroon gevonden.",
-            "drill": self.last_report["drill_prompt"]
-        }
-
-    # -----------------------------
-    # PHASE 2 — DRILL
-    # -----------------------------
-    def drill(self, student_input):
-        # Voor nu: alles goed
-        self.phase = 3
-        return {"is_correct": True}
-
-    # -----------------------------
-    # PHASE 3 — INTEGRATION TEST
-    # -----------------------------
-    def integration(self):
-        self.phase = 1
-        return self.problem["integration_test"]
+    def __init__(self, topic, problem_data):
+        self.topic = topic
+        self.problem_data = problem_data
+        self.phase = "diagnosis"
+        self.last_error = None
 
 
-# ============================================================
-# 3. ADAPTIVE LEARNING FRAMEWORK (ENGINE)
-# ============================================================
-
+# ---------------------------------------------------------
+# ADAPTIVE LEARNING FRAMEWORK
+# ---------------------------------------------------------
 class AdaptiveLearningFramework:
+    def __init__(self):
+        # IMPORTANT: This is what your UI expects
+        self.problem_bank = ProblemBank("problems")
 
-    @staticmethod
-    def initialize_learner(problem_data):
-        return AdaptiveLearner(problem_data)
+    def initialize_learner(self, topic):
+        problem_data = self.problem_bank.get_problem(topic)
+        return AdaptiveLearner(topic, problem_data)
 
-    @staticmethod
-    def process_answer(learner, student_input):
-        """
-        Stuurt automatisch door de fases:
-        diagnose → drill → integratie
-        """
+    def process_answer(self, learner, user_answer):
+        # Very simplified logic — your version may be more complex
+        correct = learner.problem_data["correct_answer"]
 
-        if learner.phase == 1:
-            return learner.diagnose(student_input)
-
-        elif learner.phase == 2:
-            drill_result = learner.drill(student_input)
-            if drill_result["is_correct"]:
+        if learner.phase == "diagnosis":
+            if user_answer.strip() == correct:
+                learner.phase = "integration"
                 return {
-                    "status": "correct",
-                    "integration": learner.integration()
+                    "message": "Correct!",
+                    "integration_test": learner.problem_data.get("integration_test")
                 }
             else:
-                return {
-                    "status": "incorrect",
-                    "drill": learner.last_report["drill_prompt"]
-                }
+                learner.last_error = "generic_error"
+                return {"message": "Incorrect. Try again."}
 
-        elif learner.phase == 3:
-            return {
-                "status": "correct",
-                "integration": learner.integration()
-            }
+        elif learner.phase == "integration":
+            if user_answer.strip() == correct:
+                return {"message": "Integration complete!"}
+            else:
+                return {"message": "Incorrect. Try again."}

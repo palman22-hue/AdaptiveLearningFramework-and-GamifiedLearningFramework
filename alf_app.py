@@ -1,109 +1,88 @@
 import streamlit as st
-import json
-import os
-from ALFFramework.engine import AdaptiveLearningFramework   # <-- BELANGRIJK
+from ALFFramework.engine import AdaptiveLearningFramework, ProblemBank
 
-# -----------------------------
-# LANGUAGE SYSTEM
-# -----------------------------
-
-LANGUAGES = {
-    "English": "en",
-    "Nederlands": "nl"
-}
-
-TEXT = {
-    "en": {
-        "title": "Adaptive Learning Framework",
-        "choose_topic": "Choose a topic:",
-        "your_answer": "Your answer:",
-        "submit": "Submit",
-        "correct": "Correct!",
-        "incorrect": "Incorrect.",
-        "drill_question": "Drill question:",
-        "integration_test": "Integration test:"
-    },
-    "nl": {
-        "title": "Adaptief Leerframework",
-        "choose_topic": "Kies een onderwerp:",
-        "your_answer": "Jouw antwoord:",
-        "submit": "Versturen",
-        "correct": "Goed!",
-        "incorrect": "Fout.",
-        "drill_question": "Drill vraag:",
-        "integration_test": "Integratietest:"
-    }
-}
-
-# -----------------------------
-# SESSION INIT
-# -----------------------------
-
+# ---------------------------------------------------------
+# 1. LANGUAGE SETUP (ALWAYS AVAILABLE)
+# ---------------------------------------------------------
 if "language" not in st.session_state:
-    st.session_state.language = "English"
+    st.session_state["language"] = "English"
 
-if "learner" not in st.session_state:
-    st.session_state.learner = None
-
-# -----------------------------
-# LANGUAGE SELECTOR
-# -----------------------------
-
-st.session_state.language = st.sidebar.selectbox(
-    "Language / Taal",
-    list(LANGUAGES.keys())
+st.session_state["language"] = st.sidebar.selectbox(
+    "Language",
+    ["English", "Nederlands"],
+    index=0
 )
 
-lang = LANGUAGES[st.session_state.language]
-T = TEXT[lang]
+language = st.session_state["language"]
 
-# -----------------------------
-# LOAD TOPICS
-# -----------------------------
+# ---------------------------------------------------------
+# 2. EXPLANATION RENDERING
+# ---------------------------------------------------------
+def render_explanation(explanation_data, language):
+    if not explanation_data:
+        st.info("No explanation available." if language == "English" else "Geen uitleg beschikbaar.")
+        return
 
-problem_dir = "problems"
-topics = [f.replace(".json", "") for f in os.listdir(problem_dir) if f.endswith(".json")]
+    st.subheader("Explanation" if language == "English" else "Uitleg")
 
-st.title(T["title"])
+    for concept in explanation_data.get("concepts", []):
+        symbol = concept.get("symbol", "")
+        meaning = concept.get("meaning", "")
 
-# -----------------------------
-# TOPIC SELECTOR
-# -----------------------------
+        st.markdown(f"**{symbol}**")
+        st.write(meaning)
+        st.markdown("---")
 
-selected_topic = st.selectbox(T["choose_topic"], topics)
+# ---------------------------------------------------------
+# 3. LOAD ENGINE (engine loads its own ProblemBank)
+# ---------------------------------------------------------
+alf = AdaptiveLearningFramework()
+problem_bank = alf.problem_bank
 
-if selected_topic:
-    json_path = os.path.join(problem_dir, selected_topic + ".json")
-    with open(json_path, "r", encoding="utf-8") as f:
-        problem_data = json.load(f)
+# ---------------------------------------------------------
+# 4. TOPIC SELECTION
+# ---------------------------------------------------------
+topics = problem_bank.get_topics()
 
-    if (
-        st.session_state.learner is None
-        or st.session_state.learner.topic != problem_data["topic"]
-    ):
-        st.session_state.learner = AdaptiveLearningFramework.initialize_learner(problem_data)
+selected_topic = st.sidebar.selectbox(
+    "Choose a topic" if language == "English" else "Kies een onderwerp",
+    topics
+)
 
-# -----------------------------
-# MAIN UI
-# -----------------------------
+# Initialize learner when topic changes
+if "current_topic" not in st.session_state or st.session_state["current_topic"] != selected_topic:
+    st.session_state["current_topic"] = selected_topic
+    st.session_state["learner"] = alf.initialize_learner(selected_topic)
 
-user_answer = st.text_input(T["your_answer"])
+learner = st.session_state["learner"]
+problem_data = learner.problem_data
 
-if st.button(T["submit"]):
-    result = AdaptiveLearningFramework.process_answer(
-        st.session_state.learner,
-        user_answer
-    )
+# ---------------------------------------------------------
+# 5. DISPLAY QUESTION
+# ---------------------------------------------------------
+st.title("Adaptive Learning Framework")
 
-    if result["status"] == "correct":
-        st.success(T["correct"])
-    else:
-        st.error(T["incorrect"])
+st.write(problem_data["question"])
 
-    if "drill" in result:
-        st.subheader(T["drill_question"])
-        st.write(result["drill"])
+# ---------------------------------------------------------
+# 6. EXPLAIN BUTTON
+# ---------------------------------------------------------
+if st.button("Explain" if language == "English" else "Leg uit"):
+    render_explanation(problem_data.get("explanation"), language)
 
-    if "integration" in result:
-        st.subheader(T["integration_test"])
-        st.write(result["integration"])
+# ---------------------------------------------------------
+# 7. USER INPUT
+# ---------------------------------------------------------
+user_answer = st.text_input(
+    "Your answer" if language == "English" else "Jouw antwoord"
+)
+
+if st.button("Submit"):
+    result = alf.process_answer(learner, user_answer)
+
+    st.write(result["message"])
+
+    # If integration test is triggered
+    if result.get("integration_test"):
+        st.subheader("Integration Test" if language == "English" else "Integratietest")
+        st.write(result["integration_test"]["prompt"])
