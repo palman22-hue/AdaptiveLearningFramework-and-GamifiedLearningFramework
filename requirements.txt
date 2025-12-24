@@ -1,0 +1,18 @@
+# Core dependencies
+numpy>=1.26
+pandas>=2.1
+pydantic>=2.5
+pyyaml>=6.0
+requests>=2.31
+
+# UI / Visualization
+streamlit>=1.30
+jinja2>=3.1
+
+# CLI / Logging
+rich>=13.7
+
+# Optional but recommended for ALF extensibility
+matplotlib>=3.8
+scikit-learn>=1.4
+
